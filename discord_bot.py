@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from keep_alive import keep_alive
 import datetime
 import pytz
+import os
 
 class ScheduleBot(commands.Bot):
     def __init__(self):
@@ -133,4 +134,6 @@ async def myweek(interaction: discord.Interaction):
     await interaction.response.send_message(summary_msg)
 
 keep_alive()
-bot.run('MTQ3ODY3MjgzMjkyNDg4MDk1Nw.GVcwvV.X9hXwlLtTPoifIi9xuSIgt7diah_F1rfskkANo')
+# ดึง Token จาก Environment Variable ที่ตั้งไว้ในเว็บ Cloud
+DISCORD_TOKEN = os.getenv('MTQ3ODY3MjgzMjkyNDg4MDk1Nw.GMjBWq.cw2AfyXdZXIsbXZ-cMIw2PpPfj_Edp3hr5ZKSU')
+bot.run(DISCORD_TOKEN)
