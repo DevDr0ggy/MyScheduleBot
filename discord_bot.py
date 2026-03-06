@@ -5,6 +5,7 @@ import pytz
 import os
 import json
 import aiohttp
+import random
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -166,24 +167,18 @@ async def myweek(interaction: discord.Interaction):
     )
     await interaction.response.send_message(summary_msg)
 
-# Command to add new homework
 @bot.tree.command(name="hw_add", description="Add a new homework or project task")
 async def hw_add(interaction: discord.Interaction, subject: str, task: str, due_date: str):
-    # 1. Load existing data from the database
     data = load_homework()
 
-    # 2. Check if 'tasks' list exists in data; if not, create an empty list
     if "tasks" not in data:
         data["tasks"] = []
 
-    # 3. Generate a unique ID for the new task (Auto-increment ID)
     if len(data["tasks"]) == 0:
         new_id = 1
     else:
-        # Get the ID of the last task and add 1
         new_id = data["tasks"][-1]["id"] + 1
 
-    # 4. Create a dictionary for the new task
     new_task = {
         "id": new_id,
         "subject": subject,
@@ -191,11 +186,9 @@ async def hw_add(interaction: discord.Interaction, subject: str, task: str, due_
         "due_date": due_date
     }
 
-    # 5. Append the new task to our list and save it to the JSON file
     data["tasks"].append(new_task)
     save_homework(data)
 
-    # 6. Send a success message back to Discord
     msg = (
         f"✅ **บันทึกการบ้านเรียบร้อย!**\n"
         f"📚 **วิชา:** {subject}\n"
@@ -205,26 +198,20 @@ async def hw_add(interaction: discord.Interaction, subject: str, task: str, due_
     )
     await interaction.response.send_message(msg)
 
-
-# Command to list all homework
 @bot.tree.command(name="hw_list", description="Show all pending homework")
 async def hw_list(interaction: discord.Interaction):
     data = load_homework()
 
-    # เช็คว่ามีรายการ 'tasks' ไหม หรือถ้ามีแต่งานว่างเปล่า (len == 0)
     if "tasks" not in data or len(data["tasks"]) == 0:
         await interaction.response.send_message("🎉 **ไม่มีการบ้านค้างเลย!** ไปเล่นเกม ดูกันพลาได้สบายใจ!")
         return
 
-    # ถ้ามีการบ้าน ให้วนลูป (for loop) เอาข้อมูลมาต่อกันเป็นข้อความ
     msg = "📋 **รายการการบ้านที่ต้องทำ:**\n"
     for task in data["tasks"]:
         msg += f"🔹 **[ID: {task['id']}]** วิชา {task['subject']} | 📝 {task['task']} | 📅 ส่ง: {task['due_date']}\n"
 
     await interaction.response.send_message(msg)
 
-
-# Command to remove completed homework
 @bot.tree.command(name="hw_done", description="Mark homework as done and remove it")
 async def hw_done(interaction: discord.Interaction, task_id: int):
     data = load_homework()
@@ -233,36 +220,31 @@ async def hw_done(interaction: discord.Interaction, task_id: int):
         await interaction.response.send_message("❌ ไม่มีการบ้านในระบบให้ลบครับ!")
         return
 
-    # ค้นหางานที่ ID ตรงกับที่พิมพ์มา เพื่อทำการลบทิ้ง
     task_found = False
     for i in range(len(data["tasks"])):
         if data["tasks"][i]["id"] == task_id:
-            removed_task = data["tasks"].pop(i)  # คำสั่ง .pop() คือการดึงข้อมูลนั้นออกจาก List ทิ้งไปเลย
+            removed_task = data["tasks"].pop(i)
             task_found = True
-            break  # ลบเสร็จแล้วก็สั่งเบรก (หยุดลูป) ได้เลย ประหยัดทรัพยากร
+            break
 
     if task_found:
-        save_homework(data)  # อย่าลืมเซฟทับไฟล์เดิมด้วย!
+        save_homework(data)
         await interaction.response.send_message(
             f"✅ **เย้! ลบงานรหัส {task_id} เรียบร้อย!**\n(ลบวิชา {removed_task['subject']} ออกจากสมุดจดแล้ว เก่งมากครับ!)")
     else:
         await interaction.response.send_message(
             f"❌ **หาไม่เจอ!** ไม่มีงานรหัส {task_id} ในสมุดจดครับ ลองพิมพ์ /hw_list เช็คดูอีกทีนะ")
 
-# Command to add 1 skip to a subject
 @bot.tree.command(name="skip_add", description="Add 1 skip quota to a specific subject")
 async def skip_add(interaction: discord.Interaction, subject: str):
     data = load_attendance()
 
-    # Check if the subject is already in the database; if not, set it to 0
     if subject not in data:
         data[subject] = 0
 
-    # Increment the skip count by 1
     data[subject] += 1
     save_attendance(data)
 
-    # Check for danger zone (e.g., skipping 3 times means you might get an F)
     warning = ""
     if data[subject] >= 3:
         warning = "\n🚨 **อันตราย!** ขาดเกิน 3 ครั้งระวังหมดสิทธิ์สอบ (ติด F) นะครับ!"
@@ -270,7 +252,6 @@ async def skip_add(interaction: discord.Interaction, subject: str):
     msg = f"⚠️ บันทึกการขาดเรียนวิชา **{subject}**\nรวมขาดไปแล้ว: **{data[subject]} ครั้ง**{warning}"
     await interaction.response.send_message(msg)
 
-# Command to check all skip quotas
 @bot.tree.command(name="skip_check", description="Check your skip count for all subjects")
 async def skip_check(interaction: discord.Interaction):
     data = load_attendance()
@@ -285,45 +266,34 @@ async def skip_check(interaction: discord.Interaction):
 
     await interaction.response.send_message(msg)
 
-# Command to reset skip quota (in case of a mistake or a new semester)
 @bot.tree.command(name="skip_reset", description="Reset the skip count for a subject to 0")
 async def skip_reset(interaction: discord.Interaction, subject: str):
     data = load_attendance()
 
     if subject in data:
-        del data[subject]  # Delete the subject from the dictionary entirely
+        del data[subject]
         save_attendance(data)
         await interaction.response.send_message(
             f"🔄 **รีเซ็ต!** ลบประวัติการขาดเรียนวิชา **{subject}** เรียบร้อยแล้วครับ")
     else:
         await interaction.response.send_message(f"❌ **หาไม่เจอ!** ไม่พบประวัติการขาดเรียนวิชา **{subject}** ในระบบครับ")
 
-# Command to check weather in Bang Phra, Chon Buri
 @bot.tree.command(name="weather", description="Check current weather in Bang Phra, Chon Buri")
 async def weather(interaction: discord.Interaction):
-    # พิกัด GPS ของ มทร.ตะวันออก วิทยาเขตบางพระ
     lat = 13.2148
     lon = 100.9416
-
-    # URL ของพนักงานเสิร์ฟ (API) ที่เราจะไปขอข้อมูล
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-
-    # บอก Discord ให้หมุนติ้วๆ รอแป๊บนึง (เผื่อเว็บสภาพอากาศตอบกลับช้า บอทจะได้ไม่ Error)
     await interaction.response.defer()
-
-    # เริ่มกระบวนการส่งตัวแทนไปดึงข้อมูลจากเว็บ
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
-            if response.status == 200:  # ถ้าได้รหัส 200 แปลว่าเว็บทำงานปกติ
-                data = await response.json()  # แปลงร่างข้อมูลที่ได้มาให้อยู่ในรูป JSON (Dictionary)
+            if response.status == 200:
+                data = await response.json()
 
-                # แกะกล่องเอาเฉพาะข้อมูลที่เราอยากได้
                 current = data.get("current_weather", {})
                 temp = current.get("temperature", "-")
                 wind_speed = current.get("windspeed", "-")
                 weather_code = current.get("weathercode", 0)
 
-                # แปลงรหัสสภาพอากาศ (Weather Code) เป็นภาษาไทยและอีโมจิ
                 condition = "ท้องฟ้าแจ่มใส ☀️"
                 if weather_code in [1, 2, 3]:
                     condition = "มีเมฆบางส่วน ⛅"
@@ -336,7 +306,6 @@ async def weather(interaction: discord.Interaction):
                 elif weather_code in [95, 96, 99]:
                     condition = "พายุฝนฟ้าคะนอง ⛈️ (อันตราย! งดแว้นเด็ดขาด)"
 
-                # จัดหน้าตาข้อความตอบกลับ
                 msg = (
                     "🌤️ **รายงานสภาพอากาศ ณ บางพระ ชลบุรี** 🌤️\n"
                     f"🌡️ อุณหภูมิ: **{temp} °C**\n"
@@ -344,10 +313,28 @@ async def weather(interaction: discord.Interaction):
                     f"👀 สภาพอากาศ: **{condition}**"
                 )
 
-                # ใช้ followup.send เพราะตอนแรกเราสั่ง defer() รอไว้แล้ว
                 await interaction.followup.send(msg)
             else:
                 await interaction.followup.send("❌ บอทติดต่อกรมอุตุฯ ไม่ได้ครับ ลองใหม่อีกครั้งนะ")
+
+@bot.tree.command(name="randomday", description="สุ่มกิจกรรมทำในวันว่าง (จันทร์/ศุกร์)")
+async def randomday(interaction: discord.Interaction):
+    activities = [
+        "🤖 **ลุยงานโมเดล**: หยิบกันพลาหรือรถทามิย่าตัวใหม่มาต่อ พ่นสีแอร์บรัช ติดดีคอลให้ฉ่ำๆ ไปเลย!",
+        "📖 **เสพมังงะ/อนิเมะ**: หยิบ Dr. Stone, Chainsaw Man, Sanda หรือเรื่องอื่นมาอ่านชิลๆ ต่อให้จบเล่ม!",
+        "🧟 **Dev Roblox**: เปิด Studio ลุยเขียนโค้ด Lua อัปเกรดระบบเกมซอมบี้ของเราต่อให้เดือดๆ!",
+        "⛏️ **อัปเดตม็อด Minecraft**: ลุยเขียน Java ปรับปรุงม็อด Mob & Item Stacker และม็อดอื่นๆ บน CurseForge!",
+        "💻 **เล่น AI & เขียนโค้ด**: ลุยโปรเจกต์ Python สร้างแอปเจ๋งๆ หรือลองเล่นเจนรูปจาก Stable Diffusion!",
+        "🎮 **เกมเมอร์โหมด**: ปิดโหมด Dev ทิ้งไป วันนี้ขอจับจอยลุยเล่นเกมให้หนำใจยาวๆ!"
+    ]
+    chosen_activity = random.choice(activities)
+    msg = (
+        "🎲 **ตู้กาชาสุ่มกิจกรรมวันว่างทำงานแล้ว!** 🎲\n"
+        f"🎉 วันนี้บอทขอเสนอให้ชัย... \n\n"
+        f"👉 {chosen_activity}"
+    )
+
+    await interaction.response.send_message(msg)
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
