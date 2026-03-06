@@ -16,6 +16,23 @@ def load_homework():
     with open(HOMEWORK_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+# ==========================================
+# Database for Attendance Tracker
+# ==========================================
+ATTENDANCE_FILE = 'attendance.json'
+
+# Load attendance data
+def load_attendance():
+    if not os.path.exists(ATTENDANCE_FILE):
+        return {} # ถ้ายังไม่มีไฟล์ ให้ส่ง Dictionary ว่างๆ กลับไป
+    with open(ATTENDANCE_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+# Save attendance data
+def save_attendance(data):
+    with open(ATTENDANCE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
 def save_homework(data):
     with open(HOMEWORK_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
@@ -230,6 +247,55 @@ async def hw_done(interaction: discord.Interaction, task_id: int):
     else:
         await interaction.response.send_message(
             f"❌ **หาไม่เจอ!** ไม่มีงานรหัส {task_id} ในสมุดจดครับ ลองพิมพ์ /hw_list เช็คดูอีกทีนะ")
+
+# Command to add 1 skip to a subject
+@bot.tree.command(name="skip_add", description="Add 1 skip quota to a specific subject")
+async def skip_add(interaction: discord.Interaction, subject: str):
+    data = load_attendance()
+
+    # Check if the subject is already in the database; if not, set it to 0
+    if subject not in data:
+        data[subject] = 0
+
+    # Increment the skip count by 1
+    data[subject] += 1
+    save_attendance(data)
+
+    # Check for danger zone (e.g., skipping 3 times means you might get an F)
+    warning = ""
+    if data[subject] >= 3:
+        warning = "\n🚨 **อันตราย!** ขาดเกิน 3 ครั้งระวังหมดสิทธิ์สอบ (ติด F) นะครับ!"
+
+    msg = f"⚠️ บันทึกการขาดเรียนวิชา **{subject}**\nรวมขาดไปแล้ว: **{data[subject]} ครั้ง**{warning}"
+    await interaction.response.send_message(msg)
+
+# Command to check all skip quotas
+@bot.tree.command(name="skip_check", description="Check your skip count for all subjects")
+async def skip_check(interaction: discord.Interaction):
+    data = load_attendance()
+
+    if not data:
+        await interaction.response.send_message("✅ **เยี่ยมมาก!** ยังไม่เคยขาดเรียนเลยสักวิชาครับ รักษาความฟิตนี้ไว้!")
+        return
+
+    msg = "📊 **สรุปโควต้าการขาดเรียน:**\n"
+    for subj, count in data.items():
+        msg += f"🔹 วิชา {subj}: ขาดไปแล้ว **{count}** ครั้ง\n"
+
+    await interaction.response.send_message(msg)
+
+# Command to reset skip quota (in case of a mistake or a new semester)
+@bot.tree.command(name="skip_reset", description="Reset the skip count for a subject to 0")
+async def skip_reset(interaction: discord.Interaction, subject: str):
+    data = load_attendance()
+
+    if subject in data:
+        del data[subject]  # Delete the subject from the dictionary entirely
+        save_attendance(data)
+        await interaction.response.send_message(
+            f"🔄 **รีเซ็ต!** ลบประวัติการขาดเรียนวิชา **{subject}** เรียบร้อยแล้วครับ")
+    else:
+        await interaction.response.send_message(f"❌ **หาไม่เจอ!** ไม่พบประวัติการขาดเรียนวิชา **{subject}** ในระบบครับ")
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
