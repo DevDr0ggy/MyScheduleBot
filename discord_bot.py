@@ -187,6 +187,50 @@ async def hw_add(interaction: discord.Interaction, subject: str, task: str, due_
     )
     await interaction.response.send_message(msg)
 
+
+# Command to list all homework
+@bot.tree.command(name="hw_list", description="Show all pending homework")
+async def hw_list(interaction: discord.Interaction):
+    data = load_homework()
+
+    # เช็คว่ามีรายการ 'tasks' ไหม หรือถ้ามีแต่งานว่างเปล่า (len == 0)
+    if "tasks" not in data or len(data["tasks"]) == 0:
+        await interaction.response.send_message("🎉 **ไม่มีการบ้านค้างเลย!** ไปเล่นเกม ดูกันพลาได้สบายใจ!")
+        return
+
+    # ถ้ามีการบ้าน ให้วนลูป (for loop) เอาข้อมูลมาต่อกันเป็นข้อความ
+    msg = "📋 **รายการการบ้านที่ต้องทำ:**\n"
+    for task in data["tasks"]:
+        msg += f"🔹 **[ID: {task['id']}]** วิชา {task['subject']} | 📝 {task['task']} | 📅 ส่ง: {task['due_date']}\n"
+
+    await interaction.response.send_message(msg)
+
+
+# Command to remove completed homework
+@bot.tree.command(name="hw_done", description="Mark homework as done and remove it")
+async def hw_done(interaction: discord.Interaction, task_id: int):
+    data = load_homework()
+
+    if "tasks" not in data or len(data["tasks"]) == 0:
+        await interaction.response.send_message("❌ ไม่มีการบ้านในระบบให้ลบครับ!")
+        return
+
+    # ค้นหางานที่ ID ตรงกับที่พิมพ์มา เพื่อทำการลบทิ้ง
+    task_found = False
+    for i in range(len(data["tasks"])):
+        if data["tasks"][i]["id"] == task_id:
+            removed_task = data["tasks"].pop(i)  # คำสั่ง .pop() คือการดึงข้อมูลนั้นออกจาก List ทิ้งไปเลย
+            task_found = True
+            break  # ลบเสร็จแล้วก็สั่งเบรก (หยุดลูป) ได้เลย ประหยัดทรัพยากร
+
+    if task_found:
+        save_homework(data)  # อย่าลืมเซฟทับไฟล์เดิมด้วย!
+        await interaction.response.send_message(
+            f"✅ **เย้! ลบงานรหัส {task_id} เรียบร้อย!**\n(ลบวิชา {removed_task['subject']} ออกจากสมุดจดแล้ว เก่งมากครับ!)")
+    else:
+        await interaction.response.send_message(
+            f"❌ **หาไม่เจอ!** ไม่มีงานรหัส {task_id} ในสมุดจดครับ ลองพิมพ์ /hw_list เช็คดูอีกทีนะ")
+
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
 if DISCORD_TOKEN is None:
