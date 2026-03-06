@@ -3,9 +3,22 @@ from discord.ext import commands, tasks
 import datetime
 import pytz
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
+
+HOMEWORK_FILE = 'homework.json'
+def load_homework():
+    if not os.path.exists(HOMEWORK_FILE):
+        return {}
+
+    with open(HOMEWORK_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def save_homework(data):
+    with open(HOMEWORK_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
 class ScheduleBot(commands.Bot):
     def __init__(self):
@@ -134,6 +147,45 @@ async def myweek(interaction: discord.Interaction):
         "วันศุกร์: ว่างเต็มวัน! 🎮"
     )
     await interaction.response.send_message(summary_msg)
+
+# Command to add new homework
+@bot.tree.command(name="hw_add", description="Add a new homework or project task")
+async def hw_add(interaction: discord.Interaction, subject: str, task: str, due_date: str):
+    # 1. Load existing data from the database
+    data = load_homework()
+
+    # 2. Check if 'tasks' list exists in data; if not, create an empty list
+    if "tasks" not in data:
+        data["tasks"] = []
+
+    # 3. Generate a unique ID for the new task (Auto-increment ID)
+    if len(data["tasks"]) == 0:
+        new_id = 1
+    else:
+        # Get the ID of the last task and add 1
+        new_id = data["tasks"][-1]["id"] + 1
+
+    # 4. Create a dictionary for the new task
+    new_task = {
+        "id": new_id,
+        "subject": subject,
+        "task": task,
+        "due_date": due_date
+    }
+
+    # 5. Append the new task to our list and save it to the JSON file
+    data["tasks"].append(new_task)
+    save_homework(data)
+
+    # 6. Send a success message back to Discord
+    msg = (
+        f"✅ **บันทึกการบ้านเรียบร้อย!**\n"
+        f"📚 **วิชา:** {subject}\n"
+        f"📝 **งานที่สั่ง:** {task}\n"
+        f"📅 **กำหนดส่ง:** {due_date}\n"
+        f"*(รหัสงาน: {new_id})*"
+    )
+    await interaction.response.send_message(msg)
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
