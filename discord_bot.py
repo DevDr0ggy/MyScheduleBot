@@ -10,35 +10,48 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ==========================================
+# Database Configuration
+# ==========================================
 HOMEWORK_FILE = 'homework.json'
-def load_homework():
-    if not os.path.exists(HOMEWORK_FILE):
-        return {}
-
-    with open(HOMEWORK_FILE, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-# ==========================================
-# Database for Attendance Tracker
-# ==========================================
 ATTENDANCE_FILE = 'attendance.json'
+REMINDER_FILE = 'reminders.json'
 
-# Load attendance data
-def load_attendance():
-    if not os.path.exists(ATTENDANCE_FILE):
-        return {} # ถ้ายังไม่มีไฟล์ ให้ส่ง Dictionary ว่างๆ กลับไป
-    with open(ATTENDANCE_FILE, 'r', encoding='utf-8') as f:
+def load_json(filename):
+    if not os.path.exists(filename):
+        return {}
+    with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-# Save attendance data
-def save_attendance(data):
-    with open(ATTENDANCE_FILE, 'w', encoding='utf-8') as f:
+
+def save_json(filename, data):
+    with open(filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def save_homework(data):
-    with open(HOMEWORK_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+# ==========================================
+# Helper Functions
+# ==========================================
+# Function to parse date & time and support Buddhist Era (B.E.)
+def parse_datetime_support_be(date_str, time_str):
+    try:
+        d_parts = date_str.split('/')
+        day = int(d_parts[0])
+        month = int(d_parts[1])
+        year = int(d_parts[2])
+        if year > 2500:
+            year = year - 543
 
+        t_parts = time_str.split(':')
+        hour = int(t_parts[0])
+        minute = int(t_parts[1])
+
+        return datetime.datetime(year, month, day, hour, minute)
+    except Exception:
+        return None
+
+# ==========================================
+# Bot Class & Background Tasks
+# ==========================================
 class ScheduleBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix='!', intents=discord.Intents.default())
@@ -61,29 +74,60 @@ class ScheduleBot(commands.Bot):
         if channel is None:
             return
 
+        # 1. Schedule Notifications
         if current_day == 'Tuesday' and current_time == '07:50':
-            msg = "🔔 **แจ้งเตือน!** 08:00 น. มีเรียน 'ท.การคิดเชิงระบบกับการวิเคราะห์ปัญหา' ตึกเรียนรวม SEC 01 ศร. 202 ครับ"
-            await channel.send(msg)
-
+            await channel.send(
+                "🔔 **แจ้งเตือน!** 08:00 น. มีเรียน 'ท.การคิดเชิงระบบกับการวิเคราะห์ปัญหา' ตึกเรียนรวม SEC 01 ศร. 202 ครับ")
         elif current_day == 'Tuesday' and current_time == '12:50':
-            msg = "🔔 **แจ้งเตือน!** 13:00 น. มีเรียน 'เทคโนโลยีสารสนเทศเพื่อการค้นคว้า' ตึกอธิการบดี ชั้น 3 SEC 01 ครับ"
-            await channel.send(msg)
-
+            await channel.send(
+                "🔔 **แจ้งเตือน!** 13:00 น. มีเรียน 'เทคโนโลยีสารสนเทศเพื่อการค้นคว้า' ตึกอธิการบดี ชั้น 3 SEC 01 ครับ")
         elif current_day == 'Wednesday' and current_time == '07:50':
-            msg = "🔔 **แจ้งเตือน!** 08:00 น. มีเรียน 'ท.การโปรแกรมคอมพิวเตอร์' กับอ.สกุลชาย ห้อง SC208 เตรียมเปิดคอมรอได้เลย!"
-            await channel.send(msg)
-
+            await channel.send(
+                "🔔 **แจ้งเตือน!** 08:00 น. มีเรียน 'ท.การโปรแกรมคอมพิวเตอร์' กับอ.สกุลชาย ห้อง SC208 เตรียมเปิดคอมรอได้เลย!")
         elif current_day == 'Wednesday' and current_time == '12:50':
-            msg = "🔔 **แจ้งเตือน!** 13:00 น. มีเรียน 'การพัฒนาคุณภาพชีวิตและสังคม' ตึกเรียนรวม SEC 02 ศร. 211 ครับ"
-            await channel.send(msg)
-
+            await channel.send(
+                "🔔 **แจ้งเตือน!** 13:00 น. มีเรียน 'การพัฒนาคุณภาพชีวิตและสังคม' ตึกเรียนรวม SEC 02 ศร. 211 ครับ")
         elif current_day == 'Thursday' and current_time == '12:50':
-            msg = "🔔 **แจ้งเตือน!** 13:00 น. มีเรียน 'ท.คณิตศาสตร์ดิสครีตและทฤษฎีการคำนวณ' ตึกคณะ SEC 01 อ.ชานนท์ SC201 ครับ"
-            await channel.send(msg)
-
+            await channel.send(
+                "🔔 **แจ้งเตือน!** 13:00 น. มีเรียน 'ท.คณิตศาสตร์ดิสครีตและทฤษฎีการคำนวณ' ตึกคณะ SEC 01 อ.ชานนท์ SC201 ครับ")
         elif current_day == 'Thursday' and current_time == '14:50':
-            msg = "🔔 **แจ้งเตือน!** 15:00 น. มีเรียน 'ท./ป. ระบบปฏิบัติการ' ตึกคณะ SEC 01 อ.ชานนท์ SC201 ครับ"
-            await channel.send(msg)
+            await channel.send(
+                "🔔 **แจ้งเตือน!** 15:00 น. มีเรียน 'ท./ป. ระบบปฏิบัติการ' ตึกคณะ SEC 01 อ.ชานนท์ SC201 ครับ")
+
+        # 2. Reminder Notification & Auto-Delete System
+        current_dt = datetime.datetime(now.year, now.month, now.day, now.hour, now.minute)
+        reminders_data = load_json(REMINDER_FILE)
+
+        if "reminders" in reminders_data and len(reminders_data["reminders"]) > 0:
+            active_reminders = []
+
+            for rmd in reminders_data["reminders"]:
+                s_time = rmd.get("start_time", "08:00")
+                e_time = rmd.get("end_time", "08:00")
+
+                start_dt = parse_datetime_support_be(rmd["start_date"], s_time)
+                end_dt = parse_datetime_support_be(rmd["end_date"], e_time)
+
+                if start_dt is None or end_dt is None:
+                    active_reminders.append(rmd)
+                    continue
+
+                if current_dt > end_dt:
+                    print(f"Auto-deleted expired reminder: {rmd['name']}")
+                    continue
+
+                if current_dt == start_dt:
+                    msg = f"🔔 **ถึงเวลาแล้ว!** โปรเจกต์/กิจกรรม: **{rmd['name']}**\n(กำหนดสิ้นสุด: วันที่ {rmd['end_date']} เวลา {e_time} น.)"
+                    await channel.send(msg)
+
+                elif current_dt == end_dt:
+                    msg = f"⚠️ **หมดเวลาแล้ว!** โปรเจกต์/กิจกรรม: **{rmd['name']}**\nเคลียร์ให้เสร็จนะครับ! (ระบบจะลบกิจกรรมนี้ออกอัตโนมัติ)"
+                    await channel.send(msg)
+
+                active_reminders.append(rmd)
+
+            reminders_data["reminders"] = active_reminders
+            save_json(REMINDER_FILE, reminders_data)
 
     @check_schedule.before_loop
     async def before_check_schedule(self):
@@ -95,6 +139,9 @@ bot = ScheduleBot()
 async def on_ready():
     print(f'Bot is online! Logged in as {bot.user}')
 
+# ==========================================
+# Slash Commands: Schedule
+# ==========================================
 @bot.tree.command(name="monday", description="Show schedule for Monday (Free day)")
 async def monday(interaction: discord.Interaction):
     msg = "🎮 **วันจันทร์:** ว่างเต็มวัน! พักผ่อนอ่านมังงะ ดูอนิเมะ หรือเล่นเกมได้ยาวๆ เลยครับ"
@@ -167,41 +214,26 @@ async def myweek(interaction: discord.Interaction):
     )
     await interaction.response.send_message(summary_msg)
 
+# ==========================================
+# Slash Commands: Homework Manager
+# ==========================================
 @bot.tree.command(name="hw_add", description="Add a new homework or project task")
 async def hw_add(interaction: discord.Interaction, subject: str, task: str, due_date: str):
-    data = load_homework()
-
+    data = load_json(HOMEWORK_FILE)
     if "tasks" not in data:
         data["tasks"] = []
 
-    if len(data["tasks"]) == 0:
-        new_id = 1
-    else:
-        new_id = data["tasks"][-1]["id"] + 1
+    new_id = 1 if len(data["tasks"]) == 0 else data["tasks"][-1]["id"] + 1
 
-    new_task = {
-        "id": new_id,
-        "subject": subject,
-        "task": task,
-        "due_date": due_date
-    }
+    data["tasks"].append({"id": new_id, "subject": subject, "task": task, "due_date": due_date})
+    save_json(HOMEWORK_FILE, data)
 
-    data["tasks"].append(new_task)
-    save_homework(data)
-
-    msg = (
-        f"✅ **บันทึกการบ้านเรียบร้อย!**\n"
-        f"📚 **วิชา:** {subject}\n"
-        f"📝 **งานที่สั่ง:** {task}\n"
-        f"📅 **กำหนดส่ง:** {due_date}\n"
-        f"*(รหัสงาน: {new_id})*"
-    )
+    msg = f"✅ **บันทึกการบ้านเรียบร้อย!**\n📚 **วิชา:** {subject}\n📝 **งาน:** {task}\n📅 **ส่ง:** {due_date}\n*(รหัสงาน: {new_id})*"
     await interaction.response.send_message(msg)
 
 @bot.tree.command(name="hw_list", description="Show all pending homework")
 async def hw_list(interaction: discord.Interaction):
-    data = load_homework()
-
+    data = load_json(HOMEWORK_FILE)
     if "tasks" not in data or len(data["tasks"]) == 0:
         await interaction.response.send_message("🎉 **ไม่มีการบ้านค้างเลย!** ไปเล่นเกม ดูกันพลาได้สบายใจ!")
         return
@@ -209,86 +241,136 @@ async def hw_list(interaction: discord.Interaction):
     msg = "📋 **รายการการบ้านที่ต้องทำ:**\n"
     for task in data["tasks"]:
         msg += f"🔹 **[ID: {task['id']}]** วิชา {task['subject']} | 📝 {task['task']} | 📅 ส่ง: {task['due_date']}\n"
-
     await interaction.response.send_message(msg)
 
 @bot.tree.command(name="hw_done", description="Mark homework as done and remove it")
 async def hw_done(interaction: discord.Interaction, task_id: int):
-    data = load_homework()
-
+    data = load_json(HOMEWORK_FILE)
     if "tasks" not in data or len(data["tasks"]) == 0:
         await interaction.response.send_message("❌ ไม่มีการบ้านในระบบให้ลบครับ!")
         return
 
-    task_found = False
     for i in range(len(data["tasks"])):
         if data["tasks"][i]["id"] == task_id:
             removed_task = data["tasks"].pop(i)
-            task_found = True
-            break
+            save_json(HOMEWORK_FILE, data)
+            await interaction.response.send_message(
+                f"✅ **เย้! ลบงานรหัส {task_id} เรียบร้อย!**\n(ลบวิชา {removed_task['subject']} ออกจากสมุดจดแล้ว!)")
+            return
 
-    if task_found:
-        save_homework(data)
-        await interaction.response.send_message(
-            f"✅ **เย้! ลบงานรหัส {task_id} เรียบร้อย!**\n(ลบวิชา {removed_task['subject']} ออกจากสมุดจดแล้ว เก่งมากครับ!)")
-    else:
-        await interaction.response.send_message(
-            f"❌ **หาไม่เจอ!** ไม่มีงานรหัส {task_id} ในสมุดจดครับ ลองพิมพ์ /hw_list เช็คดูอีกทีนะ")
+    await interaction.response.send_message(f"❌ **หาไม่เจอ!** ไม่มีงานรหัส {task_id} ในสมุดจดครับ")
 
+# ==========================================
+# Slash Commands: Attendance Tracker
+# ==========================================
 @bot.tree.command(name="skip_add", description="Add 1 skip quota to a specific subject")
 async def skip_add(interaction: discord.Interaction, subject: str):
-    data = load_attendance()
-
+    data = load_json(ATTENDANCE_FILE)
     if subject not in data:
         data[subject] = 0
 
     data[subject] += 1
-    save_attendance(data)
+    save_json(ATTENDANCE_FILE, data)
 
-    warning = ""
-    if data[subject] >= 3:
-        warning = "\n🚨 **อันตราย!** ขาดเกิน 3 ครั้งระวังหมดสิทธิ์สอบ (ติด F) นะครับ!"
-
-    msg = f"⚠️ บันทึกการขาดเรียนวิชา **{subject}**\nรวมขาดไปแล้ว: **{data[subject]} ครั้ง**{warning}"
-    await interaction.response.send_message(msg)
+    warning = "\n🚨 **อันตราย!** ขาดเกิน 3 ครั้งระวังติด F!" if data[subject] >= 3 else ""
+    await interaction.response.send_message(
+        f"⚠️ บันทึกการขาดเรียนวิชา **{subject}**\nรวมขาดไปแล้ว: **{data[subject]} ครั้ง**{warning}")
 
 @bot.tree.command(name="skip_check", description="Check your skip count for all subjects")
 async def skip_check(interaction: discord.Interaction):
-    data = load_attendance()
-
+    data = load_json(ATTENDANCE_FILE)
     if not data:
-        await interaction.response.send_message("✅ **เยี่ยมมาก!** ยังไม่เคยขาดเรียนเลยสักวิชาครับ รักษาความฟิตนี้ไว้!")
+        await interaction.response.send_message("✅ **เยี่ยมมาก!** ยังไม่เคยขาดเรียนเลยสักวิชาครับ!")
         return
 
     msg = "📊 **สรุปโควต้าการขาดเรียน:**\n"
     for subj, count in data.items():
         msg += f"🔹 วิชา {subj}: ขาดไปแล้ว **{count}** ครั้ง\n"
-
     await interaction.response.send_message(msg)
 
 @bot.tree.command(name="skip_reset", description="Reset the skip count for a subject to 0")
 async def skip_reset(interaction: discord.Interaction, subject: str):
-    data = load_attendance()
-
+    data = load_json(ATTENDANCE_FILE)
     if subject in data:
         del data[subject]
-        save_attendance(data)
-        await interaction.response.send_message(
-            f"🔄 **รีเซ็ต!** ลบประวัติการขาดเรียนวิชา **{subject}** เรียบร้อยแล้วครับ")
+        save_json(ATTENDANCE_FILE, data)
+        await interaction.response.send_message(f"🔄 **รีเซ็ต!** ลบประวัติการขาดเรียนวิชา **{subject}** เรียบร้อยครับ")
     else:
         await interaction.response.send_message(f"❌ **หาไม่เจอ!** ไม่พบประวัติการขาดเรียนวิชา **{subject}** ในระบบครับ")
 
+# ==========================================
+# Slash Commands: Event & Project Reminder
+# ==========================================
+@bot.tree.command(name="reminder_add", description="Add an event (Date: DD/MM/YYYY, Time: HH:MM)")
+async def reminder_add(interaction: discord.Interaction, name: str, start_date: str, end_date: str,
+                       start_time: str = "08:00", end_time: str = "08:00"):
+    if parse_datetime_support_be(start_date, start_time) is None or parse_datetime_support_be(end_date,
+                                                                                              end_time) is None:
+        await interaction.response.send_message(
+            "❌ **รูปแบบผิดพลาด!**\nวันที่ต้องเป็น วัน/เดือน/ปี\nเวลาต้องเป็น ชั่วโมง:นาที (เช่น 09:30)")
+        return
+
+    data = load_json(REMINDER_FILE)
+    if "reminders" not in data:
+        data["reminders"] = []
+
+    new_id = 1 if len(data["reminders"]) == 0 else data["reminders"][-1]["id"] + 1
+
+    data["reminders"].append({
+        "id": new_id, "name": name,
+        "start_date": start_date, "end_date": end_date,
+        "start_time": start_time, "end_time": end_time
+    })
+    save_json(REMINDER_FILE, data)
+
+    msg = (f"✅ **สร้างการแจ้งเตือนเรียบร้อย!**\n📌 **กิจกรรม:** {name}\n"
+           f"🟢 **เริ่ม:** {start_date} เวลา {start_time} น.\n"
+           f"🔴 **สิ้นสุด:** {end_date} เวลา {end_time} น.")
+    await interaction.response.send_message(msg)
+
+@bot.tree.command(name="reminder_list", description="Show all active reminders and events")
+async def reminder_list(interaction: discord.Interaction):
+    data = load_json(REMINDER_FILE)
+    if "reminders" not in data or len(data["reminders"]) == 0:
+        await interaction.response.send_message("✨ **ไม่มีกิจกรรมหรือการแจ้งเตือนค้างอยู่ครับ!**")
+        return
+
+    msg = "📅 **รายการแจ้งเตือน / กิจกรรมทั้งหมด:**\n"
+    for rmd in data["reminders"]:
+        s_time = rmd.get("start_time", "08:00")
+        e_time = rmd.get("end_time", "08:00")
+        msg += f"🔹 **[ID: {rmd['id']}]** {rmd['name']} | เริ่ม: {rmd['start_date']} ({s_time}) | สิ้นสุด: {rmd['end_date']} ({e_time})\n"
+    await interaction.response.send_message(msg)
+
+@bot.tree.command(name="reminder_del", description="Delete a reminder by ID")
+async def reminder_del(interaction: discord.Interaction, rmd_id: int):
+    data = load_json(REMINDER_FILE)
+    if "reminders" not in data or len(data["reminders"]) == 0:
+        await interaction.response.send_message("❌ ไม่มีการแจ้งเตือนในระบบให้ลบครับ!")
+        return
+
+    for i in range(len(data["reminders"])):
+        if data["reminders"][i]["id"] == rmd_id:
+            removed_rmd = data["reminders"].pop(i)
+            save_json(REMINDER_FILE, data)
+            await interaction.response.send_message(
+                f"🗑️ **ลบกิจกรรมรหัส {rmd_id} เรียบร้อย!**\n(ลบ '{removed_rmd['name']}' ออกจากระบบแล้ว)")
+            return
+
+    await interaction.response.send_message(f"❌ **หาไม่เจอ!** ไม่มีกิจกรรมรหัส {rmd_id} ในระบบครับ")
+
+# ==========================================
+# Slash Commands: Utilities
+# ==========================================
 @bot.tree.command(name="weather", description="Check current weather in Bang Phra, Chon Buri")
 async def weather(interaction: discord.Interaction):
-    lat = 13.2148
-    lon = 100.9416
+    lat, lon = 13.2148, 100.9416
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
     await interaction.response.defer()
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             if response.status == 200:
                 data = await response.json()
-
                 current = data.get("current_weather", {})
                 temp = current.get("temperature", "-")
                 wind_speed = current.get("windspeed", "-")
@@ -302,20 +384,18 @@ async def weather(interaction: discord.Interaction):
                 elif weather_code in [51, 53, 55, 61, 63, 65, 80, 81, 82]:
                     condition = "ฝนตก 🌧️ (อย่าลืมพกเสื้อกันฝน!)"
                 elif weather_code in [71, 73, 75]:
-                    condition = "หิมะตก (ในไทยเนี่ยนะ!) ❄️"
+                    condition = "หิมะตก ❄️"
                 elif weather_code in [95, 96, 99]:
                     condition = "พายุฝนฟ้าคะนอง ⛈️ (อันตราย! งดแว้นเด็ดขาด)"
 
-                msg = (
-                    "🌤️ **รายงานสภาพอากาศ ณ บางพระ ชลบุรี** 🌤️\n"
-                    f"🌡️ อุณหภูมิ: **{temp} °C**\n"
-                    f"🌬️ ความเร็วลม: **{wind_speed} km/h**\n"
-                    f"👀 สภาพอากาศ: **{condition}**"
-                )
-
+                msg = (f"🌤️ **รายงานสภาพอากาศ ณ บางพระ ชลบุรี** 🌤️\n"
+                       f"🌡️ อุณหภูมิ: **{temp} °C**\n"
+                       f"🌬️ ความเร็วลม: **{wind_speed} km/h**\n"
+                       f"👀 สภาพอากาศ: **{condition}**")
                 await interaction.followup.send(msg)
             else:
-                await interaction.followup.send("❌ บอทติดต่อกรมอุตุฯ ไม่ได้ครับ ลองใหม่อีกครั้งนะ")
+                await interaction.followup.send("❌ บอทติดต่อกรมอุตุฯ ไม่ได้ครับ")
+
 
 @bot.tree.command(name="randomday", description="สุ่มกิจกรรมทำในวันว่าง (จันทร์/ศุกร์)")
 async def randomday(interaction: discord.Interaction):
@@ -323,21 +403,17 @@ async def randomday(interaction: discord.Interaction):
         "🤖 **ลุยงานโมเดล**: หยิบกันพลาหรือรถทามิย่าตัวใหม่มาต่อ พ่นสีแอร์บรัช ติดดีคอลให้ฉ่ำๆ ไปเลย!",
         "📖 **เสพมังงะ/อนิเมะ**: หยิบ Dr. Stone, Chainsaw Man, Sanda หรือเรื่องอื่นมาอ่านชิลๆ ต่อให้จบเล่ม!",
         "🧟 **Dev Roblox**: เปิด Studio ลุยเขียนโค้ด Lua อัปเกรดระบบเกมซอมบี้ของเราต่อให้เดือดๆ!",
-        "⛏️ **อัปเดตม็อด Minecraft**: ลุยเขียน Java ปรับปรุงม็อด Mob & Item Stacker และม็อดอื่นๆ บน CurseForge!",
+        "⛏️ **อัปเดตม็อด Minecraft**: ลุยเขียน Java ปรับปรุงม็อด Heart Upgrade และม็อดอื่นๆ บน CurseForge!",
         "💻 **เล่น AI & เขียนโค้ด**: ลุยโปรเจกต์ Python สร้างแอปเจ๋งๆ หรือลองเล่นเจนรูปจาก Stable Diffusion!",
         "🎮 **เกมเมอร์โหมด**: ปิดโหมด Dev ทิ้งไป วันนี้ขอจับจอยลุยเล่นเกมให้หนำใจยาวๆ!"
     ]
-    chosen_activity = random.choice(activities)
-    msg = (
-        "🎲 **ตู้กาชาสุ่มกิจกรรมวันว่างทำงานแล้ว!** 🎲\n"
-        f"🎉 วันนี้บอทขอเสนอให้ชัย... \n\n"
-        f"👉 {chosen_activity}"
-    )
-
+    msg = f"🎲 **ตู้กาชาสุ่มกิจกรรมวันว่างทำงานแล้ว!** 🎲\n🎉 วันนี้บอทขอเสนอให้ชัย... \n\n👉 {random.choice(activities)}"
     await interaction.response.send_message(msg)
 
+# ==========================================
+# Execute Bot
+# ==========================================
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-
 if DISCORD_TOKEN is None:
     print("Error: DISCORD_TOKEN not found! Please check your .env file.")
 else:
