@@ -218,7 +218,12 @@ async def myweek(interaction: discord.Interaction):
 # Slash Commands: Homework Manager
 # ==========================================
 @bot.tree.command(name="hw_add", description="Add a new homework or project task")
-async def hw_add(interaction: discord.Interaction, subject: str, task: str, due_date: str):
+async def hw_add(
+    interaction: discord.Interaction,
+    subject: str,
+    task: str,
+    due_date: str = "รอกำหนด (TBD) ⏳" # เพิ่มค่าเริ่มต้นตรงนี้!
+):
     data = load_json(HOMEWORK_FILE)
     if "tasks" not in data:
         data["tasks"] = []
@@ -259,6 +264,55 @@ async def hw_done(interaction: discord.Interaction, task_id: int):
             return
 
     await interaction.response.send_message(f"❌ **หาไม่เจอ!** ไม่มีงานรหัส {task_id} ในสมุดจดครับ")
+
+# Command to edit an existing homework task
+@bot.tree.command(name="hw_edit", description="Edit an existing homework task by ID")
+async def hw_edit(
+        interaction: discord.Interaction,
+        task_id: int,
+        subject: str = None,
+        task: str = None,
+        due_date: str = None
+):
+    # Load current homework data
+    data = load_json(HOMEWORK_FILE)
+
+    # Check if there are any tasks in the system
+    if "tasks" not in data or len(data["tasks"]) == 0:
+        await interaction.response.send_message("❌ ไม่มีการบ้านในระบบให้แก้ไขครับ!")
+        return
+
+    # 1. Find the target task by its ID
+    target_task = None
+    for t in data["tasks"]:
+        if t["id"] == task_id:
+            target_task = t
+            break
+
+    # If the ID doesn't exist
+    if target_task is None:
+        await interaction.response.send_message(f"❌ **หาไม่เจอ!** ไม่มีงานรหัส {task_id} ในสมุดจดครับ")
+        return
+
+    # 2. Update the specific fields if the user provided new data
+    if subject is not None:
+        target_task["subject"] = subject
+    if task is not None:
+        target_task["task"] = task
+    if due_date is not None:
+        target_task["due_date"] = due_date
+
+    # 3. Save the updated data back to the JSON file
+    save_json(HOMEWORK_FILE, data)
+
+    # Format the success message
+    msg = (
+        f"✏️ **แก้ไขงานรหัส {task_id} เรียบร้อย!**\n"
+        f"📚 **วิชา:** {target_task['subject']}\n"
+        f"📝 **งาน:** {target_task['task']}\n"
+        f"📅 **ส่ง:** {target_task['due_date']}"
+    )
+    await interaction.response.send_message(msg)
 
 # ==========================================
 # Slash Commands: Attendance Tracker
